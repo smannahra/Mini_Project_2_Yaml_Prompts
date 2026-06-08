@@ -1,0 +1,305 @@
+title: URL Shortener Service Specification
+version: 1.0.0
+status: approved
+created: 2026-06-08
+author: spec-writer-v1.0.0
+
+overview: >
+  This specification defines the requirements for a URL Shortener Service.
+  The service SHALL provide URL shortening, redirection, analytics tracking,
+  expiry management, and input validation via a RESTful API.
+
+requirements:
+  - id: REQ-SHORT-001
+    title: URL Shortening
+    normative: SHALL
+    description: >
+      The system SHALL accept a long URL and generate a unique short code
+      of 6 alphanumeric characters (e.g., abc123).
+    acceptance_criteria:
+      - Short code MUST be unique across all existing entries
+      - Short code MUST be exactly 6 alphanumeric characters
+      - Response MUST include the full short URL and original URL
+
+  - id: REQ-SHORT-002
+    title: URL Redirection
+    normative: SHALL
+    description: >
+      The system SHALL redirect visitors from the short URL to the
+      original long URL using HTTP 302 redirect.
+    acceptance_criteria:
+      - Valid short codes MUST redirect with HTTP 302
+      - Expired URLs MUST return HTTP 410 Gone
+      - Invalid short codes MUST return HTTP 404 Not Found
+
+  - id: REQ-SHORT-003
+    title: Analytics Tracking
+    normative: SHALL
+    description: >
+      The system SHALL track click count, last accessed timestamp,
+      and referrer for every redirect event.
+    acceptance_criteria:
+      - Click count MUST increment by 1 on every redirect
+      - Last accessed timestamp MUST update on every redirect
+      - Referrer header MUST be captured and stored if present
+
+  - id: REQ-SHORT-004
+    title: URL Expiry
+    normative: SHALL
+    description: >
+      The system SHALL support optional expiration dates on shortened URLs.
+      Expired URLs MUST NOT redirect and MUST return HTTP 410.
+    acceptance_criteria:
+      - URLs without expiry MUST never expire
+      - URLs past their expiry date MUST return HTTP 410
+      - Expiry MUST be accepted as ISO 8601 datetime format
+
+  - id: REQ-SHORT-005
+    title: URL Validation
+    normative: MUST
+    description: >
+      The system MUST validate all incoming URLs before shortening.
+      Invalid, duplicate, and malicious URLs MUST be rejected.
+    acceptance_criteria:
+      - Malformed URLs MUST return HTTP 422 Unprocessable Entity
+      - Duplicate URLs MUST return the existing short code
+      - URLs from a blocklist of malicious domains MUST return HTTP 400
+
+  - id: REQ-SHORT-006
+    title: RESTful API
+    normative: SHALL
+    description: >
+      The system SHALL expose a RESTful API with proper HTTP status codes,
+      JSON responses, and error messages for all operations.
+    acceptance_criteria:
+      - All responses MUST be JSON formatted
+      - All errors MUST include a message and error code
+      - API MUST follow REST conventions for HTTP methods and status codes
+
+gherkin_scenarios:
+  - id: SCENARIO-001
+    title: Successfully shorten a valid URL
+    requirement: REQ-SHORT-001
+    scenario: |
+      Given the API is running
+      And the URL "https://www.example.com/very/long/path" has not been shortened before
+      When I POST to /api/shorten with body {"url": "https://www.example.com/very/long/path"}
+      Then the response status MUST be 201 Created
+      And the response MUST contain a "short_code" of exactly 6 alphanumeric characters
+      And the response MUST contain the "short_url" field
+      And the response MUST contain the original "url" field
+
+  - id: SCENARIO-002
+    title: Redirect short URL to original
+    requirement: REQ-SHORT-002
+    scenario: |
+      Given a short code "abc123" exists in the system
+      And the URL is not expired
+      When I GET /abc123
+      Then the response status MUST be 302 Found
+      And the Location header MUST contain the original long URL
+      And the click count for "abc123" MUST increment by 1
+
+  - id: SCENARIO-003
+    title: Track analytics on redirect
+    requirement: REQ-SHORT-003
+    scenario: |
+      Given a short code "abc123" exists with click_count of 5
+      When I GET /abc123 with header Referer: "https://google.com"
+      Then the click_count for "abc123" MUST become 6
+      And the last_accessed timestamp MUST be updated to now
+      And the referrer "https://google.com" MUST be stored
+
+  - id: SCENARIO-004
+    title: Reject redirect for expired URL
+    requirement: REQ-SHORT-004
+    scenario: |
+      Given a short code "exp123" exists
+      And its expiry_date is "2020-01-01T00:00:00Z" (in the past)
+      When I GET /exp123
+      Then the response status MUST be 410 Gone
+      And the response body MUST contain {"error": "URL has expired"}
+
+  - id: SCENARIO-005
+    title: Reject invalid URL format
+    requirement: REQ-SHORT-005
+    scenario: |
+      Given the API is running
+      When I POST to /api/shorten with body {"url": "not-a-valid-url"}
+      Then the response status MUST be 422 Unprocessable Entity
+      And the response MUST contain {"error": "Invalid URL format"}
+
+  - id: SCENARIO-006
+    title: Return existing short code for duplicate URL
+    requirement: REQ-SHORT-005
+    scenario: |
+      Given "https://www.example.com" has already been shortened to "abc123"
+      When I POST to /api/shorten with body {"url": "https://www.example.com"}
+      Then the response status MUST be 200 OK
+      And the response MUST contain "short_code": "abc123"
+      And NO new short code MUST be created
+
+  - id: SCENARIO-007
+    title: Return 404 for unknown short code
+    requirement: REQ-SHORT-002
+    scenario: |
+      Given no short code "xyz999" exists in the system
+      When I GET /xyz999
+      Then the response status MUST be 404 Not Found
+      And the response MUST contain {"error": "Short code not found"}
+
+  - id: SCENARIO-008
+    title: Get analytics for a short URL
+    requirement: REQ-SHORT-003
+    scenario: |
+      Given a short code "abc123" exists with click_count of 10
+      When I GET /api/urls/abc123/analytics
+      Then the response status MUST be 200 OK
+      And the response MUST contain "click_count": 10
+      And the response MUST contain "last_accessed" timestamp
+      And the response MUST contain "referrers" list
+
+api_contract:
+  base_url: /api
+  version: v1
+  endpoints:
+    - method: POST
+      path: /api/shorten
+      description: Shorten a long URL
+      request_body:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  description: The long URL to shorten
+                expiry_date:
+                  type: string
+                  format: date-time
+                  description: Optional expiry date in ISO 8601 format
+      responses:
+        201:
+          description: URL successfully shortened
+          schema:
+            type: object
+            properties:
+              short_code:
+                type: string
+              short_url:
+                type: string
+              url:
+                type: string
+              created_at:
+                type: string
+              expiry_date:
+                type: string
+        200:
+          description: URL already exists, returning existing short code
+        422:
+          description: Invalid URL format
+        400:
+          description: Malicious URL detected
+
+    - method: GET
+      path: /{short_code}
+      description: Redirect to original URL
+      parameters:
+        - name: short_code
+          in: path
+          required: true
+          type: string
+      responses:
+        302:
+          description: Redirect to original URL
+        404:
+          description: Short code not found
+        410:
+          description: URL has expired
+
+    - method: GET
+      path: /api/urls/{short_code}
+      description: Get details of a shortened URL
+      responses:
+        200:
+          description: URL details
+          schema:
+            type: object
+            properties:
+              short_code:
+                type: string
+              url:
+                type: string
+              created_at:
+                type: string
+              expiry_date:
+                type: string
+              click_count:
+                type: integer
+        404:
+          description: Short code not found
+
+    - method: GET
+      path: /api/urls/{short_code}/analytics
+      description: Get analytics for a shortened URL
+      responses:
+        200:
+          description: Analytics data
+          schema:
+            type: object
+            properties:
+              short_code:
+                type: string
+              click_count:
+                type: integer
+              last_accessed:
+                type: string
+              referrers:
+                type: array
+                items:
+                  type: string
+        404:
+          description: Short code not found
+
+    - method: DELETE
+      path: /api/urls/{short_code}
+      description: Delete a shortened URL
+      responses:
+        204:
+          description: URL deleted successfully
+        404:
+          description: Short code not found
+
+non_functional_requirements:
+  - id: NFR-001
+    category: performance
+    description: >
+      The system SHALL respond to redirect requests in under 100ms
+      for the 95th percentile under normal load.
+
+  - id: NFR-002
+    category: security
+    description: >
+      The system SHALL validate all URLs against a blocklist of
+      known malicious domains before shortening.
+
+  - id: NFR-003
+    category: rate_limiting
+    description: >
+      The system SHALL limit each IP address to 100 shortening
+      requests per hour to prevent abuse.
+
+  - id: NFR-004
+    category: availability
+    description: >
+      The system SHALL maintain 99.9% uptime and SHALL handle
+      graceful degradation if the database is unavailable.
+
+  - id: NFR-005
+    category: data_retention
+    description: >
+      The system SHALL retain analytics data for 90 days after
+      a URL's last access or expiry, whichever is later.

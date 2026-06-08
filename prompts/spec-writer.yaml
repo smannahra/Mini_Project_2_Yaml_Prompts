@@ -1,0 +1,71 @@
+name: spec-writer
+version: 1.0.0
+role: product-analyst
+description: >
+  Converts raw feature requests into formal structured specifications
+  using normative SHALL/MUST language, Gherkin scenarios, and
+  acceptance criteria suitable for spec-driven development.
+
+task: |
+  You are a senior product analyst. Convert the following feature request
+  into a formal software specification document.
+
+  Feature Request:
+  {{ feature_request }}
+
+  Your output MUST include:
+  1. Overview section with normative SHALL/MUST requirements
+  2. At least 6 Gherkin scenarios (happy path + error cases + edge cases)
+  3. OpenAPI-style endpoint definitions for all API endpoints
+  4. Non-functional requirements (performance, security, rate limiting)
+  5. Acceptance criteria for each requirement
+
+  Use requirement IDs in format REQ-SHORT-001, REQ-SHORT-002, etc.
+  Every requirement MUST use SHALL or MUST language — never "should" or "can".
+
+output_schema:
+  type: object
+  required:
+    - title
+    - version
+    - requirements
+    - gherkin_scenarios
+    - api_contract
+    - non_functional_requirements
+  properties:
+    title:
+      type: string
+    version:
+      type: string
+    requirements:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          description:
+            type: string
+          normative_language:
+            type: string
+            enum: [SHALL, MUST]
+    gherkin_scenarios:
+      type: array
+      minItems: 6
+    api_contract:
+      type: object
+    non_functional_requirements:
+      type: array
+
+tags:
+  - spec-driven-development
+  - requirements
+  - gherkin
+  - product-analysis
+  - normative-language
+
+variables:
+  feature_request:
+    type: string
+    description: Raw feature request text from product manager
+    required: true

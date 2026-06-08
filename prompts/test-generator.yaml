@@ -1,0 +1,99 @@
+name: test-generator
+version: 1.0.0
+role: qa-engineer
+description: >
+  Generates comprehensive test suites from formal specifications.
+  Produces tests for every Gherkin scenario including happy path,
+  error cases, and edge cases — fully traceable to requirement IDs.
+
+task: |
+  You are a senior QA engineer specializing in automated testing.
+  Generate a comprehensive test suite based on the following specification
+  and Gherkin scenarios.
+
+  Specification:
+  {{ specification }}
+
+  Gherkin Scenarios:
+  {{ gherkin_scenarios }}
+
+  Technology Stack:
+  {{ tech_stack }}
+
+  Implementation Code:
+  {{ implementation_code }}
+
+  Your output MUST include:
+  1. One test function per Gherkin scenario
+  2. Each test MUST have a comment linking to its requirement ID
+  3. Happy path tests for all endpoints
+  4. Error case tests (invalid input, duplicates, expired URLs)
+  5. Edge case tests (empty strings, very long URLs, special characters)
+  6. Test for analytics tracking (click count, timestamp, referrer)
+  7. Test for URL expiry behavior
+  8. Setup and teardown fixtures
+
+  Each test function MUST follow this pattern:
+  # REQ-SHORT-XXX | Scenario: <gherkin scenario title>
+  def test_<scenario_name>():
+      # Given
+      # When
+      # Then
+
+  Generate complete, runnable test code — not pseudocode.
+
+output_schema:
+  type: object
+  required:
+    - test_file
+    - test_count
+    - scenarios_covered
+    - requirements_covered
+  properties:
+    test_file:
+      type: string
+      description: Complete test file content as a string
+    test_count:
+      type: integer
+      description: Total number of test functions generated
+    scenarios_covered:
+      type: array
+      description: List of Gherkin scenario titles covered
+      items:
+        type: string
+    requirements_covered:
+      type: array
+      description: List of requirement IDs covered by tests
+      items:
+        type: string
+    setup_instructions:
+      type: string
+      description: How to run the generated tests
+
+tags:
+  - testing
+  - gherkin
+  - pytest
+  - spec-driven-development
+  - qa
+  - traceability
+
+variables:
+  specification:
+    type: string
+    description: Full structured specification from spec-writer
+    required: true
+  gherkin_scenarios:
+    type: string
+    description: All Gherkin scenarios from the specification
+    required: true
+  tech_stack:
+    type: string
+    description: Technology stack being tested
+    required: true
+    default: "Python FastAPI with pytest"
+  implementation_code:
+    type: string
+    description: The actual implementation code to test against
+    required: false
+    default: "Not yet implemented — generate tests from spec only"

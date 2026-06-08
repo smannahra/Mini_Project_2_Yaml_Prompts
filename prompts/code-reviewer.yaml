@@ -1,0 +1,110 @@
+  name: code-reviewer
+version: 1.0.0
+role: security-reviewer
+description: >
+  Reviews code for OWASP vulnerabilities, logic errors, and spec
+  compliance. Returns structured JSON with severity scores and
+  actionable fix recommendations traceable to requirement IDs.
+
+task: |
+  You are a senior security code reviewer specializing in OWASP Top 10
+  vulnerabilities and API security. Review the following code carefully.
+
+  Code to Review:
+  {{ code }}
+
+  Original Requirement ID:
+  {{ requirement_id }}
+
+  Specification Context:
+  {{ spec_context }}
+
+  Your review MUST check for:
+  1. OWASP Top 10 vulnerabilities (injection, broken auth, XSS, etc.)
+  2. Input validation issues
+  3. Missing error handling
+  4. Logic errors or edge cases not handled
+  5. Spec compliance — does the code actually satisfy {{ requirement_id }}?
+  6. Performance issues (N+1 queries, missing indexes, etc.)
+  7. Missing or incorrect HTTP status codes
+
+  Return your response as valid JSON only, matching the output schema.
+  Severity levels: CRITICAL, HIGH, MEDIUM, LOW, INFO
+
+output_schema:
+  type: object
+  required:
+    - requirement_id
+    - overall_score
+    - passed
+    - issues
+    - spec_compliance
+    - recommendation
+  properties:
+    requirement_id:
+      type: string
+    overall_score:
+      type: number
+      minimum: 0
+      maximum: 10
+      description: Security and quality score out of 10
+    passed:
+      type: boolean
+      description: Whether code passes review and is safe to ship
+    issues:
+      type: array
+      items:
+        type: object
+        required:
+          - severity
+          - category
+          - description
+          - line_reference
+          - fix
+        properties:
+          severity:
+            type: string
+            enum: [CRITICAL, HIGH, MEDIUM, LOW, INFO]
+          category:
+            type: string
+            description: e.g. Input Validation, Auth, OWASP-A03
+          description:
+            type: string
+          line_reference:
+            type: string
+          fix:
+            type: string
+    spec_compliance:
+      type: object
+      properties:
+        compliant:
+          type: boolean
+        gaps:
+          type: array
+          items:
+            type: string
+    recommendation:
+      type: string
+      description: Overall recommendation and next steps
+
+tags:
+  - security
+  - owasp
+  - code-review
+  - spec-compliance
+  - quality-assurance
+
+variables:
+  code:
+    type: string
+    description: The code to be reviewed
+    required: true
+  requirement_id:
+    type: string
+    description: The requirement ID this code is meant to satisfy
+    required: true
+  spec_context:
+    type: string
+    description: Relevant section of the spec for compliance checking
+    required: false
+    default: "No additional context provided"

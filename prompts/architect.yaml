@@ -1,0 +1,100 @@
+name: architect
+version: 1.0.0
+role: senior-architect
+description: >
+  Generates detailed technical implementation plans from formal
+  specifications. Produces component breakdowns, interface definitions,
+  data models, and numbered tasks with acceptance criteria — all
+  traceable back to requirement IDs.
+
+task: |
+  You are a senior software architect. Generate a detailed technical
+  implementation plan based on the following specification.
+
+  Specification:
+  {{ specification }}
+
+  Technology Stack:
+  {{ tech_stack }}
+
+  Your output MUST include:
+  1. Component breakdown (list every file/module to be created)
+  2. Data model definitions (fields, types, constraints)
+  3. Interface definitions (function signatures, API contracts)
+  4. Numbered implementation tasks (TASK-001, TASK-002, etc.)
+  5. Each task MUST reference the requirement ID it satisfies (REQ-SHORT-XXX)
+  6. Each task MUST have clear acceptance criteria
+  7. Dependency order (which tasks must be done before others)
+
+  Format each task as:
+  TASK-ID: <title>
+  Requirement: <REQ-SHORT-XXX>
+  Description: <what to build>
+  Acceptance Criteria: <how to verify it works>
+  Depends On: <TASK-IDs or "none">
+
+output_schema:
+  type: object
+  required:
+    - components
+    - data_models
+    - implementation_tasks
+    - dependency_order
+  properties:
+    components:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+          file_path:
+            type: string
+          responsibility:
+            type: string
+    data_models:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+          fields:
+            type: array
+    implementation_tasks:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          title:
+            type: string
+          requirement_id:
+            type: string
+          description:
+            type: string
+          acceptance_criteria:
+            type: string
+          depends_on:
+            type: array
+    dependency_order:
+      type: array
+
+tags:
+  - architecture
+  - implementation-planning
+  - spec-driven-development
+  - task-breakdown
+  - traceability
+
+variables:
+  specification:
+    type: string
+    description: Full structured specification from spec-writer
+    required: true
+  tech_stack:
+    type: string
+    description: Technology stack to use for implementation
+    required: true
+    default: "Python with FastAPI, SQLite database, pytest for testing"
